@@ -387,23 +387,27 @@ const App = () => {
       ) : (
         <div className="text-center space-y-6">
           <div className="flex items-center justify-between">
-            <div className="text-center space-y-4">
-              <h1 className="text-2xl font-semibold">Score: {score}</h1>
-              <button
-                onClick={handlePauseResume}
-                className={`px-4 py-2 bg-yellow-500 rounded-md shadow hover:bg-yellow-600 transition duration-300`}
-              >
-                {isPaused ? <FaPlay /> : <GiPauseButton />}
-              </button>
+            <div className="text-center flex flex-col gap-1 items-center">
+              <h1 className="text-2xl font-semibold">Score</h1>
+              <span className="text-xl border-4 bg-custom-dark-brown border-custom-light-brown p-2 rounded-md">
+                {" "}
+                {score}
+              </span>
             </div>
-            <div className="mt-4 flex flex-col items-center gap-2">
+            <button
+              onClick={handlePauseResume}
+              className={`px-4 py-2 bg-yellow-500 rounded-md shadow hover:bg-yellow-600 transition duration-300`}
+            >
+              {isPaused ? <FaPlay /> : <GiPauseButton />}
+            </button>
+            <div className="flex items-center gap-2">
               <canvas
                 ref={nextCanvasRef}
                 className="border-4 bg-custom-dark-brown border-custom-light-brown p-2 w-16 rounded-md"
               />
             </div>
           </div>
-          <div className="mt-4">
+          <div>
             <canvas
               ref={canvasRef}
               className="bg-custom-brown border-8 p-2 rounded-md border-custom-yellow"
