@@ -1,4 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { GiPauseButton } from "react-icons/gi";
+import { FaPlay } from "react-icons/fa";
+import Modal from "./components/Modal";
 
 const App = () => {
   const canvasRef = useRef(null);
@@ -19,6 +22,7 @@ const App = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [score, setScore] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const colors = [
     "gray",
@@ -118,28 +122,85 @@ const App = () => {
     ctx.clearRect(0, 0, 250, 400);
     for (let row = 0; row < 20; row++) {
       for (let col = 0; col < 10; col++) {
-        ctx.strokeStyle = "gray";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(col * 25, row * 20, 25, 20);
+        const xPos = col * 25;
+        const yPos = row * 20;
+
+        ctx.beginPath();
+        ctx.strokeStyle = "#322421"; // Change line color (dark blue)
+        ctx.lineWidth = 3;
+
+        // Draw rounded rectangle
+        ctx.moveTo(xPos + 5, yPos); // Start at top-left corner with a little offset
+        ctx.arcTo(xPos + 25, yPos, xPos + 25, yPos + 20, 5); // Top-right corner
+        ctx.arcTo(xPos + 25, yPos + 20, xPos, yPos + 20, 5); // Bottom-right corner
+        ctx.arcTo(xPos, yPos + 20, xPos, yPos, 5); // Bottom-left corner
+        ctx.arcTo(xPos, yPos, xPos + 25, yPos, 5); // Top-left corner
+
+        ctx.stroke();
+
         if (grid[row][col] !== 0) {
           ctx.fillStyle = colors[grid[row][col]];
-          ctx.fillRect(col * 25, row * 20, 25, 20);
+          ctx.fill(); // Fill the rounded grid box with color
         }
       }
     }
   };
 
-  const drawBlock = (ctx, x, y, block, preview = false) => {
+  const drawBlock = (ctx, x, y, block, preview = false, center = false) => {
     if (!ctx) return; // Check if context is available
+
+    const blockWidth = block.shape[0].length;
+    const blockHeight = block.shape.length;
+    const blockSize = 25; // Block size for width and height
+    const blockHeightSize = 20;
+
+    // If center is true, calculate the offset to center the block
+    if (center) {
+      const canvasWidth = ctx.canvas.width / blockSize;
+      const canvasHeight = ctx.canvas.height / blockHeightSize;
+      x = Math.floor((canvasWidth - blockWidth) / 2);
+      y = Math.floor((canvasHeight - blockHeight) / 2);
+    }
+
     block.shape.forEach((row, rowIndex) => {
       row.forEach((value, colIndex) => {
         if (value !== 0) {
           const color = preview ? colors[block.color] : colors[block.color];
-          ctx.strokeStyle = preview ? color : "black"; // Use color for preview outline
-          ctx.lineWidth = preview ? 2 : 0; // Outline for preview, no outline for filled blocks
-          ctx.fillStyle = preview ? "transparent" : color;
-          ctx.fillRect((x + colIndex) * 25, (y + rowIndex) * 20, 25, 20);
-          ctx.strokeRect((x + colIndex) * 25, (y + rowIndex) * 20, 25, 20);
+
+          // Rounded corner logic
+          const startX = (x + colIndex) * blockSize;
+          const startY = (y + rowIndex) * blockHeightSize;
+
+          // Set the stroke and fill color
+          ctx.strokeStyle = preview ? color : "#322421"; // Outline color for preview
+          ctx.lineWidth = preview ? 2 : 0; // Outline for preview, none for regular blocks
+          ctx.fillStyle = preview ? "transparent" : color; // Fill color
+
+          // Draw rounded rectangle using arcs
+          const radius = 5; // Radius for rounded corners
+          ctx.beginPath();
+          ctx.moveTo(startX + radius, startY); // Top-left corner
+          ctx.arcTo(
+            startX + blockSize,
+            startY,
+            startX + blockSize,
+            startY + blockHeightSize,
+            radius
+          ); // Top-right corner
+          ctx.arcTo(
+            startX + blockSize,
+            startY + blockHeightSize,
+            startX,
+            startY + blockHeightSize,
+            radius
+          ); // Bottom-right corner
+          ctx.arcTo(startX, startY + blockHeightSize, startX, startY, radius); // Bottom-left corner
+          ctx.arcTo(startX, startY, startX + blockSize, startY, radius); // Top-left corner again
+          ctx.closePath();
+
+          // Fill and stroke the rounded rectangle
+          ctx.fill();
+          ctx.stroke();
         }
       });
     });
@@ -180,8 +241,8 @@ const App = () => {
     const nextCanvas = nextCanvasRef.current;
     const nextCtx = nextCanvas ? nextCanvas.getContext("2d") : null;
     if (nextCtx) {
-      nextCanvas.width = 150;
-      nextCanvas.height = 150;
+      nextCanvas.width = 80;
+      nextCanvas.height = 70;
       if (nextBlock.shape) {
         drawBlock(nextCtx, 0, 0, nextBlock);
       }
@@ -202,7 +263,7 @@ const App = () => {
               const newBlock = nextBlock.shape ? nextBlock : getRandomBlock();
               setNextBlock(getRandomBlock());
               if (checkCollision(grid, newBlock, 4, 0)) {
-                alert("Game Over!");
+                setIsModalOpen(true);
                 setIsGameStarted(false); // Reset game
                 setGrid(
                   Array(20)
@@ -237,7 +298,10 @@ const App = () => {
     isPaused,
     isGameStarted,
   ]);
-
+  const handleModalClose = () => {
+    setIsModalOpen(false); // Close the modal
+    startGame(); // Restart the game
+  };
   useEffect(() => {
     if (!currentBlock && isGameStarted) {
       const newBlock = getRandomBlock();
@@ -307,39 +371,47 @@ const App = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-800 text-white">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-custom-brown text-white">
       {!isGameStarted ? (
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">Welcome to Tetris!</h1>
+        <div className="text-center space-y-8">
+          <h1 className="text-5xl font-bold text-white mb-4">
+            Welcome to Tetris!
+          </h1>
           <button
             onClick={startGame}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700"
+            className="px-8 py-3  text-white bg-custom-blue  font-semibold text-xl border border-white rounded-lg"
           >
             Play
           </button>
         </div>
       ) : (
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Score: {score}</h1>
-          <button
-            onClick={handlePauseResume}
-            className={`px-6 py-2 ${
-              isPaused ? "bg-green-600" : "bg-red-600"
-            } text-white rounded-lg shadow-lg hover:${
-              isPaused ? "bg-green-700" : "bg-red-700"
-            }`}
-          >
-            {isPaused ? "Resume" : "Pause"}
-          </button>
-          <div className="mt-4">
-            <canvas ref={canvasRef} className="border border-gray-500" />
+        <div className="text-center space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="text-center space-y-4">
+              <h1 className="text-2xl font-semibold">Score: {score}</h1>
+              <button
+                onClick={handlePauseResume}
+                className={`px-4 py-2 bg-yellow-500 rounded-md shadow hover:bg-yellow-600 transition duration-300`}
+              >
+                {isPaused ? <FaPlay /> : <GiPauseButton />}
+              </button>
+            </div>
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <canvas
+                ref={nextCanvasRef}
+                className="border-4 bg-custom-dark-brown border-custom-light-brown p-2 w-16 rounded-md"
+              />
+            </div>
           </div>
           <div className="mt-4">
-            <h2 className="text-xl font-semibold">Next Block:</h2>
-            <canvas ref={nextCanvasRef} className="border border-gray-500" />
+            <canvas
+              ref={canvasRef}
+              className="bg-custom-brown border-8 p-2 rounded-md border-custom-yellow"
+            />
           </div>
         </div>
       )}
+      {isModalOpen && <Modal onClose={handleModalClose} score={score} />}
     </div>
   );
 };
